@@ -3,7 +3,7 @@
 	"id": "waisi",
 	"version": "${version}",
 	"name": "WAISI (What Am I Stepping In?)",
-	"description": "Identify the block under your feet with a customizable HUD.",
+	"description": "Identify the block under your feet with a customizable HUD. Inspired by WAILA, HWYLA, and Jade.",
 	"authors": [
 		"Cross The Desert Interactive"
 	],
