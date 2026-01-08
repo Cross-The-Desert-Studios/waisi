@@ -1,7 +1,7 @@
 # What Am I Stepping In? (WAISI)
 
 <div align="center">
-  <img src="src/main/resources/assets/waisi/icon.png" alt="WAISI Icon" width="256" height="256">
+  <img src="screenshots/icon256.png" alt="WAISI Icon" width="256" height="256">
   
   **A lightweight Fabric mod that identifies the block underneath your feet**
   
