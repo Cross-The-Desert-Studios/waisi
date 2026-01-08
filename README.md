@@ -1,11 +1,11 @@
 # What Am I Stepping In? (WAISI)
 
 <div align="center">
-  <img src="screenshots/icon256.png" alt="WAISI Icon" width="256" height="256">
+  <img src="assets/logo/exports/512.png" alt="WAISI Icon" width="256" height="256">
   
   **A lightweight Fabric mod that identifies the block underneath your feet**
   
-  ![Mod in Use](screenshots/What%20Am%20I%20Stepping%20In%3F.png)
+  ![Mod in Use](assets/screenshots/What%20Am%20I%20Stepping%20In%3F.png)
 </div>
 
 ## Overview
@@ -26,7 +26,7 @@ The mod includes a **Sodium-style configuration screen** accessible through Mod 
 
 Fine-tune the HUD's appearance with **border thickness control** (0-5 pixels) that snaps to integer values for precise adjustment. The **transparency system** supports full alpha control from 0-255, allowing you to create anything from a solid background to completely invisible backing with floating text. **Scale adjustment** ranges from 0.5x to 2.0x, ensuring the HUD looks perfect on any screen resolution or UI scale setting.
 
-![Configuration Screen](screenshots/Configuring%20the%20Mod.png)
+![Configuration Screen](assets/screenshots/Configuring%20the%20Mod.png)
 
 ### Positioning and Layout
 
@@ -40,7 +40,7 @@ For users running multiple HUD mods like Jade or HWYLA, WAISI offers an optional
 
 The HUD features **1-pixel rounded corners** for a modern, polished look without excessive visual flair. Borders are rendered **outside the content area** (outset style), preserving the padding around text and icons while maintaining clean alignment. When the mod is disabled, the configuration screen's preview pane displays a clear "MOD DISABLED" message, providing immediate visual feedback about the mod's state.
 
-![Mod Menu](screenshots/Mod%20Menu%20Entry.png)
+![Mod Menu](assets/screenshots/Mod%20Menu%20Entry.png)
 
 ## Installation
 
