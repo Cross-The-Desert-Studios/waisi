@@ -22,7 +22,7 @@ WAISI continuously monitors the block beneath your player's feet and displays re
 
 ### Customization System
 
-The mod includes a **Sodium-style configuration screen** accessible through Mod Menu, offering extensive customization options without overwhelming complexity. Choose from three carefully designed **theme presets**: a classic Dark theme with subtle gray borders, a vibrant Purple theme with gold accents, or a stark High Contrast theme for maximum visibility.
+The mod includes a configuration screen accessible through Mod Menu, offering extensive customization options without overwhelming complexity. Choose from three carefully designed **theme presets**: a classic Dark theme with subtle gray borders, a vibrant Purple theme with gold accents, or a stark High Contrast theme for maximum visibility.
 
 Fine-tune the HUD's appearance with **border thickness control** (0-5 pixels) that snaps to integer values for precise adjustment. The **transparency system** supports full alpha control from 0-255, allowing you to create anything from a solid background to completely invisible backing with floating text. **Scale adjustment** ranges from 0.5x to 2.0x, ensuring the HUD looks perfect on any screen resolution or UI scale setting.
 
@@ -121,8 +121,6 @@ WAISI builds upon the legacy of block identification mods in the Minecraft commu
 - **[WAILA](https://www.curseforge.com/minecraft/mc-mods/waila)** (What Am I Looking At) - The original mod that pioneered in-game block identification
 - **[HWYLA](https://www.curseforge.com/minecraft/mc-mods/hwyla)** (Here's What You're Looking At) - A spiritual successor that continued WAILA's mission
 - **[Jade](https://modrinth.com/mod/jade)** - The modern evolution of block identification mods
-
-The configuration UI design draws inspiration from **[Sodium](https://modrinth.com/mod/sodium)**, which set a new standard for clean, intuitive mod settings screens in the Fabric ecosystem.
 
 Built with **[Fabric](https://fabricmc.net/)**, the lightweight modding toolchain that makes modern Minecraft modding accessible and performant.
 

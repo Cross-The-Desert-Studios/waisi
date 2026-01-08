@@ -86,7 +86,7 @@ public class WaisiOptionList extends ContainerObjectSelectionList<WaisiOptionLis
             int y = this.getY();
             int rowWidth = WaisiOptionList.this.getRowWidth();
 
-            // Sodium-style: Clean, left-aligned header with underline
+            // Clean, left-aligned header with underline
             guiGraphics.drawString(Minecraft.getInstance().font,
                     Component.literal(this.label).withStyle(net.minecraft.ChatFormatting.BOLD), x, y + 12, 0xFFFFFFFF);
             // Line below
