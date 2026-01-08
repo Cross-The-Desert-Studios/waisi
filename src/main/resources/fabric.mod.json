@@ -1,0 +1,44 @@
+{
+	"schemaVersion": 1,
+	"id": "waisi",
+	"version": "${version}",
+	"name": "WAISI",
+	"description": "What Am I Stepping In? - A mod that shows the block under the player.",
+	"authors": [
+		"User"
+	],
+	"contact": {
+		"homepage": "https://fabricmc.net/",
+		"sources": "https://github.com/FabricMC/fabric-example-mod"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/waisi/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.waisi.Waisi"
+		],
+		"client": [
+			"com.waisi.WaisiClient"
+		],
+		"modmenu": [
+			"com.waisi.WaisiModMenuIntegration"
+		]
+	},
+	"mixins": [
+		"waisi.mixins.json",
+		{
+			"config": "waisi.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.18.1",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"another-mod": "*"
+	}
+}
