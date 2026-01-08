@@ -3,162 +3,189 @@ package com.waisi;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.Blocks;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
 
 public class HudRenderer {
 
     public static void render(GuiGraphics guiGraphics, Minecraft client, boolean isPreview) {
         WaisiConfig config = WaisiConfig.getInstance();
-        if (!config.enabled && !isPreview)
-            return;
+        if (!config.enabled) {
+            if (isPreview) {
+                // Render "MOD DISABLED" text for preview
+                int screenW = client.getWindow().getGuiScaledWidth();
+                int screenH = client.getWindow().getGuiScaledHeight();
+                int centerX = (int) (screenW * config.xPercent);
+                int centerY = (int) (screenH * config.yPercent);
 
-        BlockState targetState = null;
+                guiGraphics.drawCenteredString(client.font, "MOD DISABLED", centerX, centerY - 4, 0xFFFF5555);
+            }
+            return;
+        }
+
+        // Gather Data
+        ItemStack itemStack = ItemStack.EMPTY;
+        Component text = null;
+        Component modName = null;
 
         if (isPreview) {
-            // Fake state for preview
-            targetState = Blocks.GRASS_BLOCK.defaultBlockState();
+            // Mock Data
+            text = Component.literal("Grass Block");
+            modName = Component.literal("Minecraft");
+            itemStack = new ItemStack(net.minecraft.world.level.block.Blocks.GRASS_BLOCK);
         } else {
-            if (client.player == null || client.level == null)
-                return;
-            if (client.getDebugOverlay().showDebugScreen())
+            Entity camera = client.getCameraEntity();
+            if (camera == null)
                 return;
 
-            BlockPos playerPos = client.player.blockPosition();
-            BlockState stateAtFeet = client.level.getBlockState(playerPos);
+            BlockPos pos = camera.blockPosition().below();
 
-            if (!stateAtFeet.isAir()) {
-                targetState = stateAtFeet;
-            } else {
-                targetState = client.level.getBlockState(playerPos.below());
+            if (client.level.isEmptyBlock(pos)) {
+                pos = camera.blockPosition();
             }
-            if (targetState.isAir())
+
+            if (client.level.isEmptyBlock(pos))
                 return;
+
+            BlockState state = client.level.getBlockState(pos);
+            Block block = state.getBlock();
+            itemStack = new ItemStack(block);
+            text = block.getName();
+
+            String mod = net.fabricmc.loader.api.FabricLoader.getInstance()
+                    .getModContainer(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block).getNamespace())
+                    .map(c -> c.getMetadata().getName())
+                    .orElse("Minecraft");
+
+            modName = Component.literal(mod).withStyle(net.minecraft.ChatFormatting.BLUE,
+                    net.minecraft.ChatFormatting.ITALIC);
         }
 
-        String blockName = targetState.getBlock().getName().getString();
+        // --- Rendering ---
+        // Matrix3x2fStack issues? We will manually revert transforms instead of
+        // push/pop.
+        // guiGraphics.pose().push();
 
-        // Mod Name Logic
-        String modName = "";
-        if (config.showModName) {
-            String keyStr = BuiltInRegistries.BLOCK.getKey(targetState.getBlock()).toString();
-            String rawModName = keyStr.split(":")[0];
-            modName = rawModName.substring(0, 1).toUpperCase() + rawModName.substring(1);
-        }
-
-        // Get the item stack
-        ItemStack stack = targetState.getBlock().asItem().getDefaultInstance();
-
-        // Layout constants
-        int iconSize = 16;
+        // Calculate Size
         int padding = 4;
-        int lineSpacing = 2;
-        int fontHeight = 9;
+        int iconSize = config.showItemIcon ? 16 : 0;
+        int iconGap = (config.showItemIcon && iconSize > 0) ? 4 : 0;
 
-        int textWidth = client.font.width(blockName);
-        int modNameWidth = config.showModName ? client.font.width(modName) : 0;
-        int maxWidth = Math.max(textWidth, modNameWidth);
+        int textW = client.font.width(text);
+        int modW = config.showModName ? client.font.width(modName) : 0;
+        int maxTextW = Math.max(textW, modW);
 
-        int contentWidth = maxWidth;
-        if (config.showItemIcon) {
-            contentWidth += iconSize + padding;
+        int contentWidth = iconSize + iconGap + maxTextW;
+        int contentHeight = (config.showModName) ? (client.font.lineHeight * 2 + 2) : client.font.lineHeight;
+
+        // Subtitle Logic
+        int subtitleH = 0;
+        int subtitleW = 0;
+        if (config.showSubtitle) {
+            String sub = "Stepping in:";
+            subtitleW = client.font.width(sub);
+            subtitleH = client.font.lineHeight + 2;
+            contentWidth = Math.max(contentWidth, subtitleW);
         }
 
-        int boxWidth = padding + contentWidth + padding;
-        int boxHeight = padding + fontHeight + padding;
+        // Total Box Size
+        int boxW = contentWidth + (padding * 2);
+        int boxH = contentHeight + subtitleH + (padding * 2);
+
+        // Position
+        int screenW = client.getWindow().getGuiScaledWidth();
+        int screenH = client.getWindow().getGuiScaledHeight();
+
+        int px = (int) (screenW * config.xPercent);
+        int py = (int) (screenH * config.yPercent);
+
+        // Scale
+        float scale = config.scale;
+
+        // Apply Transform: Move to Center, Scale, Move Back (to center box on point)
+        // Since we are 2D stack:
+        guiGraphics.pose().translate(px, py);
+        guiGraphics.pose().scale(scale, scale);
+        guiGraphics.pose().translate(-boxW / 2f, -boxH / 2f);
+
+        // Colors
+        int bgCol = parseColor(config.backgroundColor, config.backgroundAlpha);
+        int borderCol = parseColor(config.borderColor, 255);
+        boolean showBorder = (config.backgroundAlpha > 0 && config.borderThickness > 0);
+        int textCol = parseColor(config.textColor, 255);
+        int subCol = 0xFFAAAAAA;
+
+        // Draw Border (OUTSIDE)
+        if (showBorder) {
+            int t = config.borderThickness;
+            int bx1 = -t;
+            int by1 = -t;
+            int bx2 = boxW + t;
+            int by2 = boxH + t;
+
+            guiGraphics.fill(bx1 + 1, by1, bx2 - 1, by2, borderCol);
+            guiGraphics.fill(bx1, by1 + 1, bx1 + 1, by2 - 1, borderCol);
+            guiGraphics.fill(bx2 - 1, by1 + 1, bx2, by2 - 1, borderCol);
+        }
+
+        // Draw Background
+        if (config.backgroundAlpha > 0) {
+            guiGraphics.fill(1, 0, boxW - 1, boxH, bgCol);
+            guiGraphics.fill(0, 1, 1, boxH - 1, bgCol);
+            guiGraphics.fill(boxW - 1, 1, boxW, boxH - 1, bgCol);
+        }
+
+        // Content
+        int cx = padding;
+        int cy = padding;
+
+        // Subtitle
+        if (config.showSubtitle) {
+            guiGraphics.drawString(client.font, "Stepping in:", cx, cy, subCol);
+            cy += client.font.lineHeight + 2;
+        }
+
+        // Item Icon
+        if (config.showItemIcon) {
+            guiGraphics.renderItem(itemStack, cx, cy + (contentHeight - 16) / 2);
+            cx += 16 + 4;
+        }
+
+        // Text
+        int textY = cy;
+        guiGraphics.drawString(client.font, text, cx, textY, textCol);
+
         if (config.showModName) {
-            boxHeight += lineSpacing + fontHeight;
+            // Use alpha from textCol but fixed Gray color for distinction, or just Gray?
+            // User requested distinct color. Let's use a standard "info" gray.
+            // But we must respect alpha if the user fades the HUD?
+            // The textCol has alpha. Let's extract alpha.
+            int alpha = (textCol >> 24) & 0xFF;
+            int modCol = (alpha << 24) | 0xAAAAAA;
+
+            guiGraphics.drawString(client.font, modName, cx, textY + client.font.lineHeight + 2, modCol);
         }
 
-        // Parse Colors
-        int backgroundColor = parseColor(config.backgroundColor, config.backgroundAlpha);
-        int borderColor = parseColor(config.borderColor, 255);
-        int textColor = parseColor(config.textColor, 255);
-        // Mod name is usually blueish, let's keep it static or make it configurable
-        // later.
-        // For now, let's derive it or keep it hardcoded blueish but respect alpha?
-        // Actually the user didn't ask to change mod name color, just "border and
-        // background".
-        int modNameColor = 0xFF5555FF; // Keep default blueish
+        // Revert Transforms Manually (Pop simulation)
+        guiGraphics.pose().translate(boxW / 2f, boxH / 2f);
+        guiGraphics.pose().scale(1 / scale, 1 / scale);
+        guiGraphics.pose().translate(-px, -py);
 
-        // Position & Transform
-        int screenWidth = guiGraphics.guiWidth();
-        int screenHeight = guiGraphics.guiHeight();
-
-        float centerX = screenWidth * config.xPercent;
-        float centerY = screenHeight * config.yPercent;
-
-        var pose = guiGraphics.pose();
-        pose.pushMatrix();
-
-        pose.translate(centerX, centerY);
-        pose.scale(config.scale, config.scale);
-        pose.translate(-boxWidth / 2.0f, -boxHeight / 2.0f);
-
-        // Rendering
-        int r = config.cornerRadius;
-
-        if (r > 0) {
-            // Draw Rounded Background (Cross shape + corners?)
-            // Simple approach: Center rect + top/bottom rects + corner pixels?
-            // Or just 3 rects logic:
-            // 1. Center vertical rect (full height, width - 2*r)
-            // 2. Left and Right vertical rects (height - 2*r, width r) -> Wait, 3
-            // horizontal rects is easier
-
-            // Horizontal middle
-            guiGraphics.fill(0, r, boxWidth, boxHeight - r, backgroundColor);
-            // Top center
-            guiGraphics.fill(r, 0, boxWidth - r, r, backgroundColor);
-            // Bottom center
-            guiGraphics.fill(r, boxHeight - r, boxWidth - r, boxHeight, backgroundColor);
-
-            // Corners? Efficient way is hard with just fill.
-            // Let's implement simple "chamfer" or just rects.
-            // If R is small (like 0-10), this is fine.
-
-            // Draw simple border frame (square for now, complex to round borders with
-            // fills)
-            guiGraphics.fill(-1, -1, boxWidth + 1, boxHeight + 1, borderColor);
-        } else {
-            // Standard Square
-            guiGraphics.fill(-1, -1, boxWidth + 1, boxHeight + 1, borderColor); // Border
-            guiGraphics.fill(0, 0, boxWidth, boxHeight, backgroundColor); // BG
-        }
-
-        // Draw Item Icon
-        if (config.showItemIcon) {
-            guiGraphics.renderFakeItem(stack, padding, (boxHeight - iconSize) / 2);
-        }
-
-        // Draw Block Name
-        int textX = padding;
-        if (config.showItemIcon) {
-            textX += iconSize + padding;
-        }
-
-        int textY = padding;
-        guiGraphics.drawString(client.font, blockName, textX, textY, textColor, false);
-
-        // Draw Mod Name
-        if (config.showModName) {
-            int modNameY = textY + fontHeight + lineSpacing;
-            guiGraphics.drawString(client.font, modName, textX, modNameY, modNameColor, false);
-        }
-
-        pose.popMatrix();
+        // guiGraphics.pose().pop();
     }
 
     private static int parseColor(String hex, int alpha) {
         try {
-            if (hex.startsWith("#"))
-                hex = hex.substring(1);
+            hex = hex.replace("#", "");
             int rgb = Integer.parseInt(hex, 16);
             return (alpha << 24) | rgb;
-        } catch (NumberFormatException e) {
-            return (alpha << 24) | 0x000000; // Default black on error
+        } catch (Exception e) {
+            return (alpha << 24) | 0xFFFFFF;
         }
     }
 }

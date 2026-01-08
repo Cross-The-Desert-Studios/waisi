@@ -4,15 +4,17 @@ public class WaisiConfig {
     private static final WaisiConfig INSTANCE = new WaisiConfig();
 
     public boolean enabled = true;
+    public String currentTheme = "Dark";
     public boolean showModName = true;
     public boolean showItemIcon = true;
+    public boolean showSubtitle = false;
 
     // Customization
     public float scale = 1.0f;
     public float xPercent = 0.5f;
-    public float yPercent = 0.9f;
+    public float yPercent = 0.75f;
     public int backgroundAlpha = 144; // 0-255
-    public int cornerRadius = 0; // 0-10
+    public int borderThickness = 1; // 0-5
 
     // Hex Colors (ARGB format expected, but we store as String for easy editing)
     public String backgroundColor = "#000000";

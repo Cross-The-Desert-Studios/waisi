@@ -2,14 +2,14 @@
 	"schemaVersion": 1,
 	"id": "waisi",
 	"version": "${version}",
-	"name": "WAISI",
-	"description": "What Am I Stepping In? - A mod that shows the block under the player.",
+	"name": "WAISI (What Am I Stepping In?)",
+	"description": "Identify the block under your feet with a customizable HUD.",
 	"authors": [
-		"User"
+		"Cross The Desert Interactive"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"homepage": "https://crossthedesert.dev/",
+		"sources": "https://github.com/CrossTheDesertInteractive/waisi"
 	},
 	"license": "CC0-1.0",
 	"icon": "assets/waisi/icon.png",

@@ -3,16 +3,11 @@ package com.waisi;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.AbstractButton;
-import net.minecraft.client.gui.components.AbstractSliderButton;
-import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.GuiGraphics;
-import java.util.function.Consumer;
-import com.waisi.HudRenderer;
 
 public class WaisiConfigScreen extends Screen {
     private final Screen parent;
-    private boolean isDraggingConfig = false;
+    private WaisiOptionList list;
 
     public WaisiConfigScreen(Screen parent) {
         super(Component.literal("WAISI Settings"));
@@ -21,176 +16,151 @@ public class WaisiConfigScreen extends Screen {
 
     @Override
     protected void init() {
-        this.clearWidgets(); // Clear existing widgets before re-initializing
+        // Split Layout: List takes up left ~60%
+        int listWidth = (int) (this.width * 0.60);
+
+        this.list = new WaisiOptionList(this.minecraft, listWidth, this.height - 64, 32, 25);
+        this.list.setX(0); // Ensure it starts at left edge
+
         WaisiConfig config = WaisiConfig.getInstance();
 
-        int y = 40;
-        int buttonWidth = 150;
-        int padding = 4;
-        int centerX = this.width / 2;
-        int leftCol = centerX - buttonWidth - padding;
-        int rightCol = centerX + padding;
+        // --- General ---
+        this.list.addCategoryEntry("General");
+        this.list.addButtonEntry("Mod Enabled", (btn) -> config.enabled = !config.enabled,
+                () -> config.enabled ? "ON" : "OFF",
+                "Toggles the entire HUD on or off.");
 
-        // Row 1: Enabled | Reset
-        this.addRenderableWidget(
-                Button.builder(Component.literal("HUD: " + (config.enabled ? "ON" : "OFF")), (button) -> {
-                    config.enabled = !config.enabled;
-                    button.setMessage(Component.literal("HUD: " + (config.enabled ? "ON" : "OFF")));
-                }).bounds(leftCol, y, buttonWidth, 20).build());
+        this.list.addButtonEntry("Show Mod Name", (btn) -> config.showModName = !config.showModName,
+                () -> config.showModName ? "ON" : "OFF",
+                "Displays the mod responsible for the block.");
 
-        this.addRenderableWidget(Button.builder(Component.literal("Reset to Default"), (button) -> {
-            config.xPercent = 0.5f;
-            config.yPercent = 0.9f;
+        this.list.addButtonEntry("Show Item Icon", (btn) -> config.showItemIcon = !config.showItemIcon,
+                () -> config.showItemIcon ? "ON" : "OFF",
+                "Renders the block's item icon next to the name.");
+
+        this.list.addButtonEntry("Show 'Stepping in:'", (btn) -> config.showSubtitle = !config.showSubtitle,
+                () -> config.showSubtitle ? "ON" : "OFF",
+                "Adds a subtext header to distinguish from other HUDs.");
+
+        // --- Appearance ---
+        this.list.addCategoryEntry("Appearance");
+
+        // Theme Cycler
+        this.list.addButtonEntry("Color Theme", (btn) -> cycleTheme(config),
+                () -> config.currentTheme,
+                "Cycles color themes (Dark, Purple, High Contrast).");
+
+        this.list.addSliderEntry("Scale", config.scale, 0.5f, 2.0f, val -> config.scale = val.floatValue(),
+                "Adjusts the overall size of the HUD.");
+
+        this.list.addSliderEntry("Alpha", config.backgroundAlpha, 0.0f, 255.0f,
+                val -> config.backgroundAlpha = val.intValue(),
+                "Adjusts transparency. If 0, background/border are invisible!");
+
+        this.list.addSliderEntry("Border Thick.", config.borderThickness, 0.0f, 5.0f,
+                val -> config.borderThickness = val.intValue(),
+                "Adjusts border thickness (0 = No Border).");
+
+        // --- Layout ---
+        this.list.addCategoryEntry("Layout");
+        this.list.addActionEntry("Adjust Position...",
+                (btn) -> this.minecraft.setScreen(new WaisiPositionScreen(this)),
+                "Open interactive screen to drag HUD position.");
+
+        this.list.addActionEntry("Reset Defaults", (btn) -> {
+            config.currentTheme = "Dark";
+            applyTheme(config); // Reset colors to Dark
+
             config.scale = 1.0f;
             config.backgroundAlpha = 144;
-            config.cornerRadius = 0;
+            config.enabled = true;
+            config.showModName = true;
+            config.showItemIcon = true;
+            config.xPercent = 0.5f;
+            config.yPercent = 0.75f;
+            config.borderThickness = 1;
+
+            // Hard Reload
+            this.minecraft.setScreen(new WaisiConfigScreen(this.parent));
+        }, "Resets all settings to default values.");
+
+        this.addRenderableWidget(this.list);
+
+        // Footer Done Button
+        this.addRenderableWidget(Button.builder(Component.literal("Done"), (button) -> {
+            this.minecraft.setScreen(this.parent);
+        }).bounds(this.width / 2 - 100, this.height - 27, 200, 20).build());
+    }
+
+    // --- Helpers ---
+
+    private void cycleTheme(WaisiConfig config) {
+        if (config.currentTheme.equals("Dark"))
+            config.currentTheme = "Purple";
+        else if (config.currentTheme.equals("Purple"))
+            config.currentTheme = "High Contrast";
+        else
+            config.currentTheme = "Dark";
+
+        applyTheme(config);
+    }
+
+    // Only applies colors, leaving Alpha/Thickness/Scale alone
+    private void applyTheme(WaisiConfig config) {
+        if (config.currentTheme.equals("Dark")) {
             config.backgroundColor = "#000000";
             config.borderColor = "#404040";
             config.textColor = "#FFFFFF";
-            this.rebuildWidgets();
-        }).bounds(rightCol, y, buttonWidth, 20).build());
-        y += 24;
-
-        // Row 2: Show Mod Name | Show Icon
-        this.addRenderableWidget(
-                Button.builder(Component.literal("Mod Name: " + (config.showModName ? "ON" : "OFF")), (button) -> {
-                    config.showModName = !config.showModName;
-                    button.setMessage(Component.literal("Mod Name: " + (config.showModName ? "ON" : "OFF")));
-                }).bounds(leftCol, y, buttonWidth, 20).build());
-
-        this.addRenderableWidget(
-                Button.builder(Component.literal("Show Icon: " + (config.showItemIcon ? "ON" : "OFF")), (button) -> {
-                    config.showItemIcon = !config.showItemIcon;
-                    button.setMessage(Component.literal("Show Icon: " + (config.showItemIcon ? "ON" : "OFF")));
-                }).bounds(rightCol, y, buttonWidth, 20).build());
-        y += 24;
-
-        // Row 3: Colors (Hex Inputs)
-        EditBox bgBox = new EditBox(this.font, leftCol, y, buttonWidth, 20, Component.literal("BG Color"));
-        bgBox.setMaxLength(7);
-        bgBox.setValue(config.backgroundColor);
-        bgBox.setResponder(val -> config.backgroundColor = val);
-        this.addRenderableWidget(bgBox);
-
-        EditBox borderBox = new EditBox(this.font, rightCol, y, buttonWidth, 20, Component.literal("Border Color"));
-        borderBox.setMaxLength(7);
-        borderBox.setValue(config.borderColor);
-        borderBox.setResponder(val -> config.borderColor = val);
-        this.addRenderableWidget(borderBox);
-        y += 24;
-
-        // Row 4: Scale | Alpha
-        this.addRenderableWidget(new ConfigSlider(leftCol, y, buttonWidth, 20, "Scale", config.scale, 0.5f, 2.0f,
-                val -> config.scale = val.floatValue()));
-        this.addRenderableWidget(new ConfigSlider(rightCol, y, buttonWidth, 20, "Alpha",
-                config.backgroundAlpha / 255.0f, 0.0f, 1.0f, val -> config.backgroundAlpha = (int) (val * 255)));
-        y += 24;
-
-        // Row 5: Corner Radius
-        this.addRenderableWidget(new ConfigSlider(leftCol, y, buttonWidth * 2 + padding * 2, 20, "Radius",
-                config.cornerRadius / 10.0f, 0.0f, 1.0f, val -> config.cornerRadius = (int) (val * 10)));
-        y += 30;
-
-        // Done Button
-        this.addRenderableWidget(Button.builder(Component.literal("Done"), (button) -> {
-            this.minecraft.setScreen(this.parent);
-        }).bounds((this.width - 200) / 2, this.height - 30, 200, 20).build());
-    }
-
-    // Helper method to re-initialize widgets
-    private void refreshWidgets() {
-        this.init();
+        } else if (config.currentTheme.equals("Purple")) {
+            config.backgroundColor = "#240024";
+            config.borderColor = "#FFD700"; // Gold
+            config.textColor = "#E0B0FF";
+        } else if (config.currentTheme.equals("High Contrast")) {
+            config.backgroundColor = "#000000";
+            config.borderColor = "#FFFFFF";
+            config.textColor = "#FFFFFF";
+        }
     }
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        // Overlay background (Manual fill to avoid blur crash)
+        guiGraphics.fill(0, 0, this.width, this.height, 0x90000000);
+
         super.render(guiGraphics, mouseX, mouseY, partialTick);
-        guiGraphics.drawCenteredString(this.font, "WAISI Settings - Drag HUD to Move", this.width / 2, 15, 0xFFFFFF);
 
-        // Poll for drag logic (Bypassing event listener signature headaches)
-        boolean isMouseDown = net.minecraft.client.Minecraft.getInstance().mouseHandler.isLeftPressed();
+        // Title (Centered over Left Pane)
+        guiGraphics.drawCenteredString(this.font, "WAISI Settings", this.list.getWidth() / 2, 10, 0xFFFFFFFF);
 
-        if (isMouseDown && !wasMouseDown) {
-            // Just pressed
-            boolean hittingWidget = false;
-            for (net.minecraft.client.gui.components.events.GuiEventListener child : this.children()) {
-                if (child instanceof net.minecraft.client.gui.components.AbstractWidget w && w.visible
-                        && w.isMouseOver(mouseX, mouseY)) {
-                    hittingWidget = true;
-                    break;
-                }
-            }
+        // --- PREVIEW PANE (Right Side) ---
+        int paneX = this.list.getWidth() + 10;
+        int paneY = 40;
+        int paneW = this.width - paneX - 10;
+        int paneH = 150; // Fixed height box for preview
 
-            if (!hittingWidget) {
-                isDraggingConfig = true;
-            }
-        } else if (!isMouseDown) {
-            isDraggingConfig = false;
-        }
+        // Avoid drawing offscreen if window is narrow
+        if (paneW > 20) {
+            // Background Box for Preview
+            guiGraphics.fill(paneX, paneY, paneX + paneW, paneY + paneH, 0x80000000);
+            guiGraphics.renderOutline(paneX, paneY, paneW, paneH, 0xFF888888);
 
-        if (isDraggingConfig && isMouseDown) {
+            guiGraphics.drawCenteredString(this.font, "Preview", paneX + paneW / 2, paneY - 12, 0xFFE0E0E0);
+
+            // Render HUD Centered in Preview Pane
+            int centerX = paneX + paneW / 2;
+            int centerY = paneY + paneH / 2;
+
             WaisiConfig config = WaisiConfig.getInstance();
-            float newX = (float) (mouseX / (double) this.width);
-            float newY = (float) (mouseY / (double) this.height);
+            float originalX = config.xPercent;
+            float originalY = config.yPercent;
 
-            // Snap
-            if (Math.abs(newX - 0.5f) < 0.05f)
-                newX = 0.5f;
-            if (Math.abs(newY - 0.5f) < 0.05f)
-                newY = 0.5f;
+            config.xPercent = (float) centerX / this.width;
+            config.yPercent = (float) centerY / this.height;
 
-            config.xPercent = newX;
-            config.yPercent = newY;
-        }
+            HudRenderer.render(guiGraphics, this.minecraft, true);
 
-        wasMouseDown = isMouseDown;
-
-        // Render Preview
-        HudRenderer.render(guiGraphics, this.minecraft, true);
-    }
-
-    // Add field for tracking polling state
-    private boolean wasMouseDown = false;
-
-    private class ConfigSlider extends AbstractSliderButton {
-        private final String label;
-        private final double min;
-        private final double max;
-        private final Consumer<Double> onChange;
-
-        public ConfigSlider(int x, int y, int width, int height, String label, double currentValue, double min,
-                double max, Consumer<Double> onChange) {
-            super(x, y, width, height, Component.empty(), 0); // Init value below
-            this.label = label;
-            this.min = min;
-            this.max = max;
-            this.onChange = onChange;
-
-            // Normalize value to 0-1 for the slider logic
-            this.value = (currentValue - min) / (max - min);
-            this.updateMessage();
-        }
-
-        @Override
-        protected void updateMessage() {
-            double actualValue = min + (this.value * (max - min));
-
-            String valStr;
-            if (this.label.equals("Alpha")) {
-                valStr = String.format("%d", (int) (actualValue * 255));
-            } else if (this.label.equals("Radius")) {
-                valStr = String.format("%d", (int) actualValue);
-            } else {
-                valStr = String.format("%.2f", actualValue);
-            }
-
-            this.setMessage(Component.literal(label + ": " + valStr));
-        }
-
-        @Override
-        protected void applyValue() {
-            double actualValue = min + (this.value * (max - min));
-            this.onChange.accept(actualValue);
+            config.xPercent = originalX;
+            config.yPercent = originalY;
         }
     }
 }
